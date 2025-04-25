@@ -2,6 +2,7 @@
 // #include <igl/principal_curvature.h>
 // #include <igl/avg_edge_length.h>
 // #include <igl/massmatrix.h>
+#include <Eigen/Core>
 #include <igl/adjacency_list.h>
 // #include <igl/per_face_normals.h>
 // #include <igl/barycenter.h>
@@ -22,9 +23,14 @@
 // #include <igl/infinite_cost_stopping_condition.h>
 #include "split_edges.h"
 
-void split_edges_until_bound(Eigen::MatrixXd &V_etc, Eigen::MatrixXi &F,
-                             double selthresh, Eigen::VectorXi &feature,
-                             Eigen::VectorXd &high, Eigen::VectorXd &low) {
+template <typename DerivedV_etc, typename DerivedF, typename DerivedFeature,
+          typename DerivedHigh, typename DerivedLow>
+void split_edges_until_bound(Eigen::PlainObjectBase<DerivedV_etc> &V_etc,
+                             Eigen::PlainObjectBase<DerivedF> &F,
+                             double selthresh,
+                             Eigen::PlainObjectBase<DerivedFeature> &feature,
+                             Eigen::PlainObjectBase<DerivedHigh> &high,
+                             Eigen::PlainObjectBase<DerivedLow> &low) {
   int m = F.rows();
   int n = V_etc.rows();
   int num_feat = feature.size();
@@ -66,7 +72,8 @@ void split_edges_until_bound(Eigen::MatrixXd &V_etc, Eigen::MatrixXi &F,
         // is_feature_vertex_vec(uE(i,1))==0 && uE2E[i].size()==2) { if (
         // (V.row(uE(i,0))-V.row(uE(i,1))).norm()>((high(uE(i,0))+high(uE(i,1)))/2)
         // ){
-        if ((V_etc.row(uE(i, 0)).head<3>() - V_etc.row(uE(i, 1)).head<3>())
+        if ((V_etc.row(uE(i, 0)).template head<3>() -
+             V_etc.row(uE(i, 1)).template head<3>())
                 .norm() > (std::min(high(uE(i, 0)), high(uE(i, 1))))) {
           edges_to_split.push_back(i);
           // std::cout << "C" << std::endl;

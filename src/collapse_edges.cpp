@@ -2,6 +2,7 @@
 // #include <igl/principal_curvature.h>
 // #include <igl/avg_edge_length.h>
 // #include <igl/massmatrix.h>
+#include <Eigen/Core>
 #include <igl/adjacency_list.h>
 // #include <igl/per_face_normals.h>
 // #include <igl/barycenter.h>
@@ -24,13 +25,18 @@
 #include <igl/remove_unreferenced.h>
 #include <igl/shortest_edge_and_midpoint.h>
 
-void collapse_edges(Eigen::MatrixXd &V_etc, Eigen::MatrixXi &F,
-                    double selthresh, Eigen::VectorXi &feature,
-                    Eigen::VectorXd &high, Eigen::VectorXd &low) {
+template <typename DerivedV_etc, typename DerivedF, typename DerivedFeature,
+          typename DerivedHigh, typename DerivedLow>
+void collapse_edges(Eigen::MatrixBase<DerivedV_etc> &V_etc,
+                    Eigen::MatrixBase<DerivedF> &F, double selthresh,
+                    Eigen::MatrixBase<DerivedFeature> &feature,
+                    Eigen::MatrixBase<DerivedHigh> &high,
+                    Eigen::MatrixBase<DerivedLow> &low) {
   Eigen::MatrixXi E, uE, EI, EF;
   Eigen::VectorXi EMAP, I, J;
-  Eigen::VectorXd data;
-  Eigen::MatrixXd U;
+  // Eigen::VectorXd data;
+  Eigen::Matrix<typename DerivedV_etc::Scalar, Eigen::Dynamic, Eigen::Dynamic>
+      U;
   Eigen::MatrixXi G;
   // namanh: note that V_etc is shape (n_verts, 3+1+attribs), contains
   // coordinates as well as other features being interpolated (1 for the
@@ -115,8 +121,8 @@ void collapse_edges(Eigen::MatrixXd &V_etc, Eigen::MatrixXi &F,
           // this I has the indices of the surviving vertices to extract out
           // of both V and V_etc
           // wait we should do this with high and low too
-          double p_high = (high(e_v1) + high(e_v2) )/ 2;
-          double p_low = (low(e_v1) + low(e_v2) )/ 2;
+          double p_high = (high(e_v1) + high(e_v2)) / 2;
+          double p_low = (low(e_v1) + low(e_v2)) / 2;
           high(e_v1) = p_high;
           high(e_v2) = p_high;
           low(e_v1) = p_low;
@@ -226,7 +232,7 @@ void collapse_edges(Eigen::MatrixXd &V_etc, Eigen::MatrixXi &F,
                                         stopping_condition);
 
   // std::cout << "??" << std::endl;
-  igl::decimate(V_etc.leftCols<3>().eval(), F,
+  igl::decimate(V_etc.template leftCols<3>().eval(), F,
                 shortest_edge_and_midpoint_lambda, stopping_condition,
                 pre_collapse_lambda, post_collapse_lambda, U, G, J, I);
   // std::cout << "!!" << std::endl;

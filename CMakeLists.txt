@@ -8,7 +8,7 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS True)
 set(CMAKE_BUILD_TYPE "Release")  # change to Debug for debugging
 #set(CMAKE_BUILD_TYPE "Debug")
 
-#set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 set(EXT_DIR ${CMAKE_CURRENT_SOURCE_DIR}/ext)
 
 #add_compile_definitions(IGL_PARALLEL_FOR_FORCE_SERIAL)
@@ -46,7 +46,7 @@ FetchContent_Declare(
     libigl
     GIT_REPOSITORY https://github.com/libigl/libigl.git
     GIT_TAG v2.5.0
-	SOURCE_DIR ${EXT_DIR}/libigl/
+    SOURCE_DIR ${EXT_DIR}/libigl/
 )
 FetchContent_MakeAvailable(libigl)
 
@@ -67,12 +67,12 @@ add_library(adaptive_remesh_lib
 	src/tangential_smoothing.h
 
 	# Source
-	src/collapse_edges.cpp
-	src/equalize_valences.cpp
+	# src/collapse_edges.cpp
+	# src/equalize_valences.cpp
 	src/adaptive_remesh_botsch.cpp
-	src/split_edges.cpp
-	src/split_edges_until_bound.cpp
-	src/tangential_smoothing.cpp
+	# src/split_edges.cpp
+	# src/split_edges_until_bound.cpp
+	# src/tangential_smoothing.cpp
 	)
 
 target_link_libraries(adaptive_remesh_lib Threads::Threads Eigen3::Eigen)

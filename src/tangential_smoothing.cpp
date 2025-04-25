@@ -15,19 +15,22 @@
 // #include <igl/flip_edge.h>
 #include <igl/remove_duplicate_vertices.h>
 
-void tangential_smoothing(Eigen::MatrixXd &V_etc, Eigen::MatrixXi &F,
-                          double selthresh, Eigen::VectorXi &feature,
-                          Eigen::VectorXd &lambda,
-                          const Eigen::VectorXd &sizingField,
-                          bool use_sizing_field_weighted_avg) {
+template <typename DerivedV_etc, typename DerivedF, typename DerivedFeature,
+          typename DerivedLambda, typename DerivedSizingField>
+void tangential_smoothing(
+    Eigen::MatrixBase<DerivedV_etc> &V_etc, Eigen::MatrixBase<DerivedF> &F,
+    double selthresh, Eigen::MatrixBase<DerivedFeature> &feature,
+    Eigen::MatrixBase<DerivedLambda> &lambda,
+    const Eigen::MatrixBase<DerivedSizingField> &sizingField,
+    bool use_sizing_field_weighted_avg) {
   using namespace Eigen;
   Eigen::MatrixXd N;
   Eigen::VectorXd dblA;
   std::vector<std::vector<int>> A;
   Matrix3d I, NN;
   I.setIdentity();
-  Eigen::MatrixXd SV;
-  Eigen::MatrixXi SVI, SVJ;
+  // Eigen::MatrixXd SV;
+  // Eigen::MatrixXi SVI, SVJ;
 
   int n = V_etc.rows();
   const int n_attribs = V_etc.cols();
@@ -58,13 +61,13 @@ void tangential_smoothing(Eigen::MatrixXd &V_etc, Eigen::MatrixXi &F,
   // Q.resize(n, 3);
   // P.resize(n, 3);
   //           Eigen::MatrixXd N;
-  igl::per_vertex_normals(V_etc.leftCols<3>(), F, N);
+  igl::per_vertex_normals(V_etc.template leftCols<3>(), F, N);
 
   std::vector<std::vector<int>> V2F, _1;
   igl::vertex_triangle_adjacency(n, F, V2F, _1);
   Eigen::VectorXd area;
   Eigen::MatrixXd BC;
-  igl::doublearea(V_etc.leftCols<3>(), F, area);
+  igl::doublearea(V_etc.template leftCols<3>(), F, area);
   area /= 2;
   igl::barycenter(V_etc, F, BC); // n-d barycenter, not just 3D!
 

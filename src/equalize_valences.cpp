@@ -1,3 +1,4 @@
+#include <Eigen/Core>
 #include <igl/avg_edge_length.h>
 #include <igl/per_vertex_normals.h>
 #include <igl/principal_curvature.h>
@@ -16,9 +17,151 @@
 // #include <igl/C_STR.h>
 #include <igl/flip_edge.h>
 
-void equalize_valences(Eigen::MatrixXd &V_etc, Eigen::MatrixXi &F,
-                       double selthresh, Eigen::VectorXi &feature) {
-  Eigen::VectorXd p;
+template <typename DerivedV_etc, typename DerivedF, typename DerivedE,
+          typename DeriveduE, typename DerivedEMAP, typename uE2EType>
+void flip_edge_adjacency(Eigen::VectorXi &vertex_valences, double selthresh,
+                         int n_attribs_minus1,
+                         Eigen::PlainObjectBase<DerivedV_etc> &V_etc,
+                         std::vector<std::vector<int>> &A,
+                         Eigen::PlainObjectBase<DerivedF> &F,       // F
+                         Eigen::PlainObjectBase<DerivedE> &E,       // E
+                         Eigen::PlainObjectBase<DeriveduE> &uE,     // uE
+                         Eigen::PlainObjectBase<DerivedEMAP> &EMAP, // EMAP
+                         std::vector<std::vector<uE2EType>> &uE2E,  // uE2E
+                         uE2EType &uei) {
+  // namanh: check if edge is selected, if so mark bad/just return early
+  // edit: do we allow only one vertex ?
+  if (!(V_etc(uE(uei, 0), Eigen::last) >= selthresh &&
+        V_etc(uE(uei, 1), Eigen::last) >= selthresh)) {
+    return;
+  }
+
+  //  std::cout << "Lambda call" << std::endl;
+  int num_faces = F.rows();
+  auto &half_edges = uE2E[uei];
+  int f1 = half_edges[0] % num_faces;
+  int f2 = half_edges[1] % num_faces;
+  int c1 = half_edges[0] / num_faces;
+  int c2 = half_edges[1] / num_faces;
+  assert(c1 < 3);
+  assert(c2 < 3);
+
+  assert(f1 != f2);
+  int v1 = F(f1, (c1 + 1) % 3);
+  int v2 = F(f1, (c1 + 2) % 3);
+  int v4 = F(f1, c1);
+  int v3 = F(f2, c2);
+  assert(F(f2, (c2 + 2) % 3) == v1);
+  assert(F(f2, (c2 + 1) % 3) == v2);
+  // Assert new triangle's area is nonzero
+  // f1_new
+  double a1 =
+      (V_etc.row(v1).template head<3>() - V_etc.row(v3).template head<3>())
+          .norm();
+  double b1 =
+      (V_etc.row(v1).template head<3>() - V_etc.row(v4).template head<3>())
+          .norm();
+  double c11 =
+      (V_etc.row(v4).template head<3>() - V_etc.row(v3).template head<3>())
+          .norm();
+  double s1 = (a1 + b1 + c11) / 2;
+  double area_1_squared = s1 * (s1 - a1) * (s1 - b1) * (s1 - c11);
+  // f2_new
+  double a2 =
+      (V_etc.row(v2).template head<3>() - V_etc.row(v3).template head<3>())
+          .norm();
+  double b2 =
+      (V_etc.row(v2).template head<3>() - V_etc.row(v4).template head<3>())
+          .norm();
+  double c22 =
+      (V_etc.row(v4).template head<3>() - V_etc.row(v3).template head<3>())
+          .norm();
+  double s2 = (a2 + b2 + c22) / 2;
+  double area_2_squared = s2 * (s2 - a2) * (s2 - b2) * (s2 - c22);
+  bool bad = false;
+
+  Eigen::RowVector3d v21, v31, v41, v24, v34, v43, v23, normf10, normf11,
+      normf12, normf20, normf21, normf22;
+  v21 = V_etc.row(v2).template head<3>() - V_etc.row(v1).template head<3>();
+  v31 = V_etc.row(v3).template head<3>() - V_etc.row(v1).template head<3>();
+  v41 = V_etc.row(v4).template head<3>() - V_etc.row(v1).template head<3>();
+  v24 = V_etc.row(v2).template head<3>() - V_etc.row(v4).template head<3>();
+  v34 = V_etc.row(v3).template head<3>() - V_etc.row(v4).template head<3>();
+  v43 = V_etc.row(v4).template head<3>() - V_etc.row(v3).template head<3>();
+  v23 = V_etc.row(v2).template head<3>() - V_etc.row(v3).template head<3>();
+  normf10 = v21.cross(v31);
+  normf11 = v41.cross(v31);
+  normf12 = v24.cross(v34);
+  normf20 = v41.cross(v21);
+  normf21 = v43.cross(v23);
+  normf22 = v41.cross(v31);
+  normf10.normalize();
+  normf11.normalize();
+  normf12.normalize();
+  normf20.normalize();
+  normf21.normalize();
+  normf22.normalize();
+
+  if (normf10.dot(normf11) < normf11.norm() / 2 ||
+      normf10.dot(normf12) < normf12.norm() / 2) {
+    bad = true;
+  }
+  if (normf20.dot(normf21) < normf21.norm() / 2 ||
+      normf20.dot(normf22) < normf22.norm() / 2) {
+    bad = true;
+  }
+
+  if (area_1_squared == 0) {
+    bad = true;
+  }
+  if (area_2_squared == 0) {
+    bad = true;
+  }
+
+  if (std::count(A[v3].begin(), A[v3].end(), v4)) {
+    bad = true; // is it gonna generate non-manifold??
+  }
+
+  if (uE2E[uei].size() != 2) {
+    bad = true;
+  }
+
+  if (!bad) {
+    // std::cout << "D1" << std::endl;
+    igl::flip_edge<DerivedF, DerivedE, DeriveduE, DerivedEMAP, int>(
+        F, E, uE, EMAP, uE2E, uei);
+    // std::cout << "D2" << std::endl;
+    // std::cout << "Lambda call test" << std::endl;
+    assert(uE(uei, 0) == v3);
+    assert(uE(uei, 1) == v4);
+    // so the resulting edge of the flip is (v3, v4) (they each gained 1
+    // degree) and we also set them to selected now
+    double mean_sel_value =
+        (V_etc(v1, Eigen::last) + V_etc(v2, Eigen::last)) / 2;
+    V_etc(v3, n_attribs_minus1) = mean_sel_value;
+    V_etc(v4, n_attribs_minus1) = mean_sel_value;
+
+    //  std::cout << "updating_valences" << std::endl;
+    vertex_valences(v1) = vertex_valences(v1) - 1;
+    vertex_valences(v2) = vertex_valences(v2) - 1;
+    vertex_valences(v3) = vertex_valences(v3) + 1;
+    vertex_valences(v4) = vertex_valences(v4) + 1;
+
+    std::remove_if(A[v1].begin(), A[v1].begin(),
+                   [&v2](const int &v) { return v == v2; });
+    std::remove_if(A[v2].begin(), A[v2].begin(),
+                   [&v1](const int &v) { return v == v1; });
+    A[v3].push_back(v4);
+    A[v4].push_back(v3);
+  }
+  // std::cout << "Lambda call end" << std::endl;
+};
+
+template <typename DerivedV_etc, typename DerivedF, typename DerivedFeature>
+void equalize_valences(Eigen::PlainObjectBase<DerivedV_etc> &V_etc,
+                       Eigen::PlainObjectBase<DerivedF> &F, double selthresh,
+                       Eigen::PlainObjectBase<DerivedFeature> &feature) {
+  // Eigen::VectorXd p;
   std::vector<bool> is_feature_vertex;
   Eigen::MatrixXi E, uE, EI, EF;
   Eigen::VectorXi EMAP;
@@ -56,134 +199,12 @@ void equalize_valences(Eigen::MatrixXd &V_etc, Eigen::MatrixXi &F,
   //
   //  std::cout << "C" << std::endl;
 
-  std::function<void(Eigen::MatrixXi &,               // F
-                     Eigen::MatrixXi &,               // E
-                     Eigen::MatrixXi &,               // uE
-                     Eigen::VectorXi &,               // EMAP
-                     std::vector<std::vector<int>> &, // uE2E
-                     int &)>
-      flip_edge_adjacency = [&vertex_valences, selthresh, n_attribs_minus1,
-                             &V_etc,
-                             &A](Eigen::MatrixXi &F,                  // F
-                                 Eigen::MatrixXi &E,                  // E
-                                 Eigen::MatrixXi &uE,                 // uE
-                                 Eigen::VectorXi &EMAP,               // EMAP
-                                 std::vector<std::vector<int>> &uE2E, // uE2E
-                                 int &uei) -> void {
-    // namanh: check if edge is selected, if so mark bad/just return early
-    // edit: do we allow only one vertex ?
-    if (!(V_etc(uE(uei, 0), Eigen::last) >= selthresh &&
-          V_etc(uE(uei, 1), Eigen::last) >= selthresh)) {
-      return;
-    }
-
-    //  std::cout << "Lambda call" << std::endl;
-    int num_faces = F.rows();
-    auto &half_edges = uE2E[uei];
-    int f1 = half_edges[0] % num_faces;
-    int f2 = half_edges[1] % num_faces;
-    int c1 = half_edges[0] / num_faces;
-    int c2 = half_edges[1] / num_faces;
-    assert(c1 < 3);
-    assert(c2 < 3);
-
-    assert(f1 != f2);
-    int v1 = F(f1, (c1 + 1) % 3);
-    int v2 = F(f1, (c1 + 2) % 3);
-    int v4 = F(f1, c1);
-    int v3 = F(f2, c2);
-    assert(F(f2, (c2 + 2) % 3) == v1);
-    assert(F(f2, (c2 + 1) % 3) == v2);
-    // Assert new triangle's area is nonzero
-    // f1_new
-    double a1 = (V_etc.row(v1).head<3>() - V_etc.row(v3).head<3>()).norm();
-    double b1 = (V_etc.row(v1).head<3>() - V_etc.row(v4).head<3>()).norm();
-    double c11 = (V_etc.row(v4).head<3>() - V_etc.row(v3).head<3>()).norm();
-    double s1 = (a1 + b1 + c11) / 2;
-    double area_1_squared = s1 * (s1 - a1) * (s1 - b1) * (s1 - c11);
-    // f2_new
-    double a2 = (V_etc.row(v2).head<3>() - V_etc.row(v3).head<3>()).norm();
-    double b2 = (V_etc.row(v2).head<3>() - V_etc.row(v4).head<3>()).norm();
-    double c22 = (V_etc.row(v4).head<3>() - V_etc.row(v3).head<3>()).norm();
-    double s2 = (a2 + b2 + c22) / 2;
-    double area_2_squared = s2 * (s2 - a2) * (s2 - b2) * (s2 - c22);
-    bool bad = false;
-
-    Eigen::RowVector3d v21, v31, v41, v24, v34, v43, v23, normf10, normf11,
-        normf12, normf20, normf21, normf22;
-    v21 = V_etc.row(v2).head<3>() - V_etc.row(v1).head<3>();
-    v31 = V_etc.row(v3).head<3>() - V_etc.row(v1).head<3>();
-    v41 = V_etc.row(v4).head<3>() - V_etc.row(v1).head<3>();
-    v24 = V_etc.row(v2).head<3>() - V_etc.row(v4).head<3>();
-    v34 = V_etc.row(v3).head<3>() - V_etc.row(v4).head<3>();
-    v43 = V_etc.row(v4).head<3>() - V_etc.row(v3).head<3>();
-    v23 = V_etc.row(v2).head<3>() - V_etc.row(v3).head<3>();
-    normf10 = v21.cross(v31);
-    normf11 = v41.cross(v31);
-    normf12 = v24.cross(v34);
-    normf20 = v41.cross(v21);
-    normf21 = v43.cross(v23);
-    normf22 = v41.cross(v31);
-    normf10.normalize();
-    normf11.normalize();
-    normf12.normalize();
-    normf20.normalize();
-    normf21.normalize();
-    normf22.normalize();
-
-    if (normf10.dot(normf11) < normf11.norm() / 2 ||
-        normf10.dot(normf12) < normf12.norm() / 2) {
-      bad = true;
-    }
-    if (normf20.dot(normf21) < normf21.norm() / 2 ||
-        normf20.dot(normf22) < normf22.norm() / 2) {
-      bad = true;
-    }
-
-    if (area_1_squared == 0) {
-      bad = true;
-    }
-    if (area_2_squared == 0) {
-      bad = true;
-    }
-
-    if (std::count(A[v3].begin(), A[v3].end(), v4)) {
-      bad = true; // is it gonna generate non-manifold??
-    }
-
-    if (uE2E[uei].size() != 2) {
-      bad = true;
-    }
-
-    if (!bad) {
-      // std::cout << "D1" << std::endl;
-      igl::flip_edge(F, E, uE, EMAP, uE2E, uei);
-      // std::cout << "D2" << std::endl;
-      // std::cout << "Lambda call test" << std::endl;
-      assert(uE(uei, 0) == v3);
-      assert(uE(uei, 1) == v4);
-      // so the resulting edge of the flip is (v3, v4) (they each gained 1
-      // degree) and we also set them to selected now
-      double mean_sel_value =
-          (V_etc(v1, Eigen::last) + V_etc(v2, Eigen::last)) / 2;
-      V_etc(v3, n_attribs_minus1) = mean_sel_value;
-      V_etc(v4, n_attribs_minus1) = mean_sel_value;
-
-      //  std::cout << "updating_valences" << std::endl;
-      vertex_valences(v1) = vertex_valences(v1) - 1;
-      vertex_valences(v2) = vertex_valences(v2) - 1;
-      vertex_valences(v3) = vertex_valences(v3) + 1;
-      vertex_valences(v4) = vertex_valences(v4) + 1;
-
-      std::remove_if(A[v1].begin(), A[v1].begin(),
-                     [&v2](const int &v) { return v == v2; });
-      std::remove_if(A[v2].begin(), A[v2].begin(),
-                     [&v1](const int &v) { return v == v1; });
-      A[v3].push_back(v4);
-      A[v4].push_back(v3);
-    }
-    // std::cout << "Lambda call end" << std::endl;
-  };
+  // std::function<void(Eigen::MatrixXi &,               // F
+  //                    Eigen::MatrixXi &,               // E
+  //                    Eigen::MatrixXi &,               // uE
+  //                    Eigen::VectorXi &,               // EMAP
+  //                    std::vector<std::vector<int>> &, // uE2E
+  //                    int &)>
 
   // std::cout << "D" << std::endl;
 
@@ -226,7 +247,8 @@ void equalize_valences(Eigen::MatrixXd &V_etc, Eigen::MatrixXi &F,
       //     std::cout << deviation_post << std::endl;
 
       if (deviation_pre > deviation_post) {
-        flip_edge_adjacency(F, E, uE, EMAP, uE2E, i);
+        flip_edge_adjacency(vertex_valences, selthresh, n_attribs_minus1, V_etc,
+                            A, F, E, uE, EMAP, uE2E, i);
       }
     }
 

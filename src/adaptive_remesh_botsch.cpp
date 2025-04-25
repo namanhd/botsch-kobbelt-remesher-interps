@@ -1,6 +1,8 @@
+#include "adaptive_remesh_botsch.h"
 #include "collapse_edges.h"
 #include "equalize_valences.h"
 #include "tangential_smoothing.h"
+#include <Eigen/Core>
 // #include <igl/is_edge_manifold.h>
 // #include <igl/writeOBJ.h>
 #include "split_edges_until_bound.h"
@@ -8,6 +10,7 @@
 // #include <igl/edge_flaps.h>
 // #include <igl/circulation.h>
 // #include <igl/remove_duplicate_vertices.h>
+#include <Eigen/src/Core/util/Constants.h>
 #include <igl/avg_edge_length.h>
 #include <igl/cotmatrix.h>
 #include <igl/gaussian_curvature.h>
@@ -16,27 +19,30 @@
 #include <igl/point_mesh_squared_distance.h>
 #include <iostream>
 
-void calc_adaptive_sizing_field(Eigen::MatrixXd &V_etc, Eigen::MatrixXi &F,
-                                Eigen::VectorXd &sizingField, double epsilon,
-                                bool adaptive, double my_min_adaptive_sizing,
-                                double my_max_adaptive_sizing) {
+template <typename DerivedV_etc, typename DerivedF, typename DerivedSizingField>
+void calc_adaptive_sizing_field(
+    Eigen::MatrixBase<DerivedV_etc> &V_etc, Eigen::MatrixBase<DerivedF> &F,
+    Eigen::PlainObjectBase<DerivedSizingField> &sizingField, double epsilon,
+    bool adaptive, double my_min_adaptive_sizing,
+    double my_max_adaptive_sizing) {
   if (adaptive) {
     Eigen::VectorXd epsilon_vec =
         Eigen::VectorXd::Constant(V_etc.rows(), epsilon);
     Eigen::MatrixXd K_tot; // maximum absolute curvature
     Eigen::VectorXd K;     // gaussian curvature
     // Compute integral of Gaussian curvature
-    igl::gaussian_curvature(V_etc.leftCols<3>(), F, K);
+    igl::gaussian_curvature(V_etc.template leftCols<3>(), F, K);
     // Compute mass matrix
     Eigen::SparseMatrix<double> L, M, Minv;
-    igl::massmatrix(V_etc.leftCols<3>(), F, igl::MASSMATRIX_TYPE_VORONOI, M);
+    igl::massmatrix(V_etc.template leftCols<3>(), F,
+                    igl::MASSMATRIX_TYPE_VORONOI, M);
     igl::invert_diag(M, Minv);
     // Divide by area to get integral average
     K = (Minv * K).eval();
     // mean curvature
     Eigen::MatrixXd HN, H;
-    igl::cotmatrix(V_etc.leftCols<3>(), F, L);
-    HN = -Minv * (L * V_etc.leftCols<3>());
+    igl::cotmatrix(V_etc.template leftCols<3>(), F, L);
+    HN = -Minv * (L * V_etc.template leftCols<3>());
     H = HN.rowwise().norm().array() / 4; // up to sign.
     Eigen::VectorXd delta = H.array().square() - K.array();
     for (int i = 0; i < delta.size(); i++) // clip delta to 0 to avoid nans
@@ -90,13 +96,13 @@ void remesh_botsch(const Eigen::MatrixXd &Vattrs_in,
                    int verbose, Eigen::MatrixXd &Vattrs_out,
                    Eigen::MatrixXi &F_out, Eigen::VectorXi &Vselection_out) {
   Eigen::MatrixXd V0;
-  Eigen::MatrixXi F0;
+  Eigen::Matrix<int, Eigen::Dynamic, 3> F0;
   Eigen::VectorXd high, low, lambda, sizingField;
   // high = Vtargetlen_in * 1.4;
   // low = Vtargetlen_in * 0.7;
 
   F0 = F_in;
-  F_out = F_in;
+  F_out = F0;
   V0 = Vattrs_in.leftCols<3>();
 
   Eigen::VectorXi feature;
@@ -156,7 +162,7 @@ void remesh_botsch(const Eigen::MatrixXd &Vattrs_in,
       }
       Eigen::VectorXi sqrI;
       Eigen::VectorXd sqrD;
-      Eigen::MatrixXd V_projected;
+      Eigen::Matrix<double, Eigen::Dynamic, 3> V_projected;
       igl::point_mesh_squared_distance(V_etc.leftCols(3).eval(), V0, F0, sqrD,
                                        sqrI,
                                        V_projected); // Project
@@ -176,7 +182,8 @@ void remesh_botsch(const Eigen::MatrixXd &Vattrs_in,
                        .matrix();
 }
 
-// overload with constant targetlen, does not need to append the targetlen field onto V_etc
+// overload with constant targetlen, does not need to append the targetlen field
+// onto V_etc
 void remesh_botsch(const Eigen::MatrixXd &Vattrs_in,
                    const Eigen::MatrixXi &F_in,
                    const Eigen::VectorXi &Vselection_in, double targetlen,
@@ -184,11 +191,11 @@ void remesh_botsch(const Eigen::MatrixXd &Vattrs_in,
                    int verbose, Eigen::MatrixXd &Vattrs_out,
                    Eigen::MatrixXi &F_out, Eigen::VectorXi &Vselection_out) {
   Eigen::MatrixXd V0;
-  Eigen::MatrixXi F0;
+  Eigen::Matrix<int, Eigen::Dynamic, 3> F0;
   Eigen::VectorXd high, low, lambda, sizingField;
 
   F0 = F_in;
-  F_out = F_in;
+  F_out = F0;
   V0 = Vattrs_in.leftCols<3>();
 
   Eigen::VectorXi feature;
@@ -278,11 +285,11 @@ void remesh_botsch_adaptive(const Eigen::MatrixXd &Vattrs_in,
                             Eigen::MatrixXi &F_out,
                             Eigen::VectorXi &Vselection_out) {
   Eigen::MatrixXd V0;
-  Eigen::MatrixXi F0;
+  Eigen::Matrix<int, Eigen::Dynamic, 3> F0;
   Eigen::VectorXd high, low, lambda, sizingField;
 
   F0 = F_in;
-  F_out = F_in;
+  F_out = F0;
   V0 = Vattrs_in.leftCols<3>();
 
   Eigen::VectorXi feature;
