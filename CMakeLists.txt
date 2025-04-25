@@ -79,8 +79,8 @@ target_link_libraries(adaptive_remesh_lib Threads::Threads Eigen3::Eigen)
 target_compile_options(adaptive_remesh_lib PRIVATE -O3)
 
 
-nanobind_add_module(adremeshpy src/nanobind_bindings.cpp)
-target_include_directories(adremeshpy PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src)
-target_link_libraries(adremeshpy PUBLIC adaptive_remesh_lib)
+nanobind_add_module(bkremeshlerps src/nanobind_bindings.cpp)
+target_include_directories(bkremeshlerps PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src)
+target_link_libraries(bkremeshlerps PUBLIC adaptive_remesh_lib)
 
 

@@ -53,7 +53,7 @@ remesh_botsch_adaptive_with_interps(
   return std::make_tuple(Vattrs_remesh, F_remesh, Vselection_remesh);
 }
 
-NB_MODULE(adremeshpy, m) {
+NB_MODULE(bkremeshlerps, m) {
   m.def("remesh_botsch_with_interps",
         (std::tuple<Eigen::MatrixXd, Eigen::MatrixXi, Eigen::VectorXi>(*)(
             const nb::DRef<const Eigen::MatrixXd> &,
