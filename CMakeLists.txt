@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 3.15..3.27)
 project(adaptive_remesh VERSION 0.1.0)
 set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
-
+set(CMAKE_EXPORT_COMPILE_COMMANDS True)
 
 set(CMAKE_BUILD_TYPE "Release")  # change to Debug for debugging
 #set(CMAKE_BUILD_TYPE "Debug")
