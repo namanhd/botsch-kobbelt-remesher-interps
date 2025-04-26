@@ -1,6 +1,8 @@
 #include "adaptive_remesh_botsch.h"
 #include "collapse_edges.h"
 #include "equalize_valences.h"
+#include "igl/barycentric_coordinates.h"
+#include "igl/barycentric_interpolation.h"
 #include "tangential_smoothing.h"
 #include <Eigen/Core>
 // #include <igl/is_edge_manifold.h>
@@ -10,6 +12,7 @@
 // #include <igl/edge_flaps.h>
 // #include <igl/circulation.h>
 // #include <igl/remove_duplicate_vertices.h>
+#include <Eigen/src/Core/Matrix.h>
 #include <Eigen/src/Core/util/Constants.h>
 #include <igl/avg_edge_length.h>
 #include <igl/cotmatrix.h>
@@ -89,14 +92,15 @@ void calc_adaptive_sizing_field(
 }
 
 void remesh_botsch(const Eigen::MatrixXd &Vattrs_in,
-                   const Eigen::MatrixXi &F_in,
+                   const Eigen::MatrixX3i &F_in,
                    const Eigen::VectorXi &Vselection_in,
                    const Eigen::VectorXd &Vtargetlen_in,
                    double selection_threshold, int iters, bool project,
                    int verbose, Eigen::MatrixXd &Vattrs_out,
-                   Eigen::MatrixXi &F_out, Eigen::VectorXi &Vselection_out) {
+                   Eigen::MatrixX3i &F_out, Eigen::VectorXi &Vselection_out,
+                   Eigen::VectorXi &Fi_containing_V_proj_out) {
   Eigen::MatrixXd V0;
-  Eigen::Matrix<int, Eigen::Dynamic, 3> F0;
+  Eigen::MatrixX3i F0;
   Eigen::VectorXd high, low, lambda, sizingField;
   // high = Vtargetlen_in * 1.4;
   // low = Vtargetlen_in * 0.7;
@@ -160,11 +164,10 @@ void remesh_botsch(const Eigen::MatrixXd &Vattrs_in,
       if (verbose) {
         std::cout << "projecting..." << "\n";
       }
-      Eigen::VectorXi sqrI;
       Eigen::VectorXd sqrD;
-      Eigen::Matrix<double, Eigen::Dynamic, 3> V_projected;
+      Eigen::MatrixX3d V_projected;
       igl::point_mesh_squared_distance(V_etc.leftCols(3).eval(), V0, F0, sqrD,
-                                       sqrI,
+                                       Fi_containing_V_proj_out,
                                        V_projected); // Project
       V_etc.leftCols<3>() = V_projected;
     }
@@ -185,13 +188,14 @@ void remesh_botsch(const Eigen::MatrixXd &Vattrs_in,
 // overload with constant targetlen, does not need to append the targetlen field
 // onto V_etc
 void remesh_botsch(const Eigen::MatrixXd &Vattrs_in,
-                   const Eigen::MatrixXi &F_in,
+                   const Eigen::MatrixX3i &F_in,
                    const Eigen::VectorXi &Vselection_in, double targetlen,
                    double selection_threshold, int iters, bool project,
                    int verbose, Eigen::MatrixXd &Vattrs_out,
-                   Eigen::MatrixXi &F_out, Eigen::VectorXi &Vselection_out) {
+                   Eigen::MatrixX3i &F_out, Eigen::VectorXi &Vselection_out,
+                   Eigen::VectorXi &Fi_containing_V_proj_out) {
   Eigen::MatrixXd V0;
-  Eigen::Matrix<int, Eigen::Dynamic, 3> F0;
+  Eigen::MatrixX3i F0;
   Eigen::VectorXd high, low, lambda, sizingField;
 
   F0 = F_in;
@@ -254,11 +258,10 @@ void remesh_botsch(const Eigen::MatrixXd &Vattrs_in,
       if (verbose) {
         std::cout << "projecting..." << "\n";
       }
-      Eigen::VectorXi sqrI;
       Eigen::VectorXd sqrD;
-      Eigen::MatrixXd V_projected;
+      Eigen::MatrixX3d V_projected;
       igl::point_mesh_squared_distance(V_etc.leftCols(3).eval(), V0, F0, sqrD,
-                                       sqrI,
+                                       Fi_containing_V_proj_out,
                                        V_projected); // Project
       V_etc.leftCols<3>() = V_projected;
     }
@@ -277,15 +280,16 @@ void remesh_botsch(const Eigen::MatrixXd &Vattrs_in,
 
 // this really should be an overload...
 void remesh_botsch_adaptive(const Eigen::MatrixXd &Vattrs_in,
-                            const Eigen::MatrixXi &F_in,
+                            const Eigen::MatrixX3i &F_in,
                             const Eigen::VectorXi &Vselection_in,
                             double epsilon, bool adaptive,
                             double selection_threshold, int iters, bool project,
                             int verbose, Eigen::MatrixXd &Vattrs_out,
-                            Eigen::MatrixXi &F_out,
-                            Eigen::VectorXi &Vselection_out) {
+                            Eigen::MatrixX3i &F_out,
+                            Eigen::VectorXi &Vselection_out,
+                            Eigen::VectorXi &Fi_containing_V_proj_out) {
   Eigen::MatrixXd V0;
-  Eigen::Matrix<int, Eigen::Dynamic, 3> F0;
+  Eigen::MatrixX3i F0;
   Eigen::VectorXd high, low, lambda, sizingField;
 
   F0 = F_in;
@@ -351,11 +355,10 @@ void remesh_botsch_adaptive(const Eigen::MatrixXd &Vattrs_in,
       if (verbose) {
         std::cout << "projecting..." << "\n";
       }
-      Eigen::VectorXi sqrI;
       Eigen::VectorXd sqrD;
-      Eigen::MatrixXd V_projected;
+      Eigen::MatrixX3d V_projected;
       igl::point_mesh_squared_distance(V_etc.leftCols(3).eval(), V0, F0, sqrD,
-                                       sqrI,
+                                       Fi_containing_V_proj_out,
                                        V_projected); // Project
       V_etc.leftCols<3>() = V_projected;
     }
@@ -370,4 +373,25 @@ void remesh_botsch_adaptive(const Eigen::MatrixXd &Vattrs_in,
   Vselection_out = (V_etc.rightCols<1>().array() >= selection_threshold)
                        .cast<int>()
                        .matrix();
+}
+
+// helper for finding barycentric hits with Fi_containing_V_proj
+void barycentric_interp_on_Fi_containing_V_proj(
+    const Eigen::MatrixXd &Vattrs_orig_in, const Eigen::MatrixX3i &F_orig_in,
+    const Eigen::MatrixX3d &V_proj_in,
+    const Eigen::VectorXi &Fi_containing_V_proj_in,
+    Eigen::MatrixX3d &barycentric_coordinates_out,
+    Eigen::MatrixXd &Vattrs_barylerped_out) {
+  igl::barycentric_coordinates(
+      V_proj_in,
+      Vattrs_orig_in.leftCols<3>()(F_orig_in(Fi_containing_V_proj_in, 0),
+                                   Eigen::all),
+      Vattrs_orig_in.leftCols<3>()(F_orig_in(Fi_containing_V_proj_in, 1),
+                                   Eigen::all),
+      Vattrs_orig_in.leftCols<3>()(F_orig_in(Fi_containing_V_proj_in, 2),
+                                   Eigen::all),
+      barycentric_coordinates_out);
+  igl::barycentric_interpolation(
+      Vattrs_orig_in, F_orig_in, barycentric_coordinates_out,
+      Fi_containing_V_proj_in, Vattrs_barylerped_out);
 }
