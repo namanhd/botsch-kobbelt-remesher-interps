@@ -35,7 +35,13 @@ find_package(nanobind CONFIG REQUIRED)
 # putting this before fetching igl makes igl's cmake scripts able to see this
 # Eigen instead of trying to fetch its own Eigen
 find_package(Threads REQUIRED)
-find_package(Eigen3 3.4...<4.0)
+
+if(CMAKE_VERSION VERSION_LESS 3.19)
+  find_package(Eigen3 3.4...)
+else()
+  find_package(Eigen3 3.4...<4.0)  # some arbitrarily high version, since 3.4... doesn't work,,
+endif()
+
 # this find_package(Eigen3) is not REQUIRED but if it passes (found Eigen >=3.4), 
 # igl won't try to fetch its own Eigen. But if this doesn't pass, (either no eigen or
 # older version), fetching igl will fetch its own eigen and make it available for us
