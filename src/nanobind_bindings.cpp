@@ -11,13 +11,14 @@ remesh_botsch_with_interps__consttargetlen(
     const nb::DRef<const Eigen::MatrixXd> &Vattrs,
     const nb::DRef<const Eigen::MatrixXi> &F,
     const nb::DRef<const Eigen::VectorXi> &Vselection, double targetlen,
-    double selection_threshold, int iterations, bool project, int verbose) {
+    double selection_threshold, int iterations, bool smooth, bool project,
+    int verbose) {
   Eigen::MatrixXd Vattrs_remesh;
   Eigen::MatrixX3i F_remesh;
   Eigen::VectorXi Vselection_remesh;
   Eigen::VectorXi Fi_containing_V_proj;
   remesh_botsch(Vattrs, F, Vselection, targetlen, selection_threshold,
-                iterations, project, verbose, Vattrs_remesh, F_remesh,
+                iterations, smooth, project, verbose, Vattrs_remesh, F_remesh,
                 Vselection_remesh, Fi_containing_V_proj);
   return std::make_tuple(Vattrs_remesh, F_remesh, Vselection_remesh,
                          Fi_containing_V_proj);
@@ -29,13 +30,14 @@ remesh_botsch_with_interps__arrtarglen(
     const nb::DRef<const Eigen::MatrixXi> &F,
     const nb::DRef<const Eigen::VectorXi> &Vselection,
     const nb::DRef<const Eigen::VectorXd> &targetlen,
-    double selection_threshold, int iterations, bool project, int verbose) {
+    double selection_threshold, int iterations, bool smooth, bool project,
+    int verbose) {
   Eigen::MatrixXd Vattrs_remesh;
   Eigen::MatrixX3i F_remesh;
   Eigen::VectorXi Vselection_remesh;
   Eigen::VectorXi Fi_containing_V_proj;
   remesh_botsch(Vattrs, F, Vselection, targetlen, selection_threshold,
-                iterations, project, verbose, Vattrs_remesh, F_remesh,
+                iterations, smooth, project, verbose, Vattrs_remesh, F_remesh,
                 Vselection_remesh, Fi_containing_V_proj);
   return std::make_tuple(Vattrs_remesh, F_remesh, Vselection_remesh,
                          Fi_containing_V_proj);
@@ -46,15 +48,15 @@ remesh_botsch_adaptive_with_interps(
     const nb::DRef<const Eigen::MatrixXd> &Vattrs,
     const nb::DRef<const Eigen::MatrixXi> &F,
     const nb::DRef<const Eigen::VectorXi> &Vselection, double epsilon,
-    bool adaptive, double selection_threshold, int iterations, bool project,
-    int verbose) {
+    bool adaptive, double selection_threshold, int iterations, bool smooth,
+    bool project, int verbose) {
   Eigen::MatrixXd Vattrs_remesh;
   Eigen::MatrixX3i F_remesh;
   Eigen::VectorXi Vselection_remesh;
   Eigen::VectorXi Fi_containing_V_proj;
   remesh_botsch_adaptive(Vattrs, F, Vselection, epsilon, adaptive,
-                         selection_threshold, iterations, project, verbose,
-                         Vattrs_remesh, F_remesh, Vselection_remesh,
+                         selection_threshold, iterations, smooth, project,
+                         verbose, Vattrs_remesh, F_remesh, Vselection_remesh,
                          Fi_containing_V_proj);
   return std::make_tuple(Vattrs_remesh, F_remesh, Vselection_remesh,
                          Fi_containing_V_proj);
@@ -79,7 +81,7 @@ NB_MODULE(bkremeshlerps, m) {
         &remesh_botsch_with_interps__consttargetlen, nb::arg("Vattrs"),
         nb::arg("F"), nb::arg("Vselection"), nb::arg("targetlen"),
         nb::arg("selection_threshold"), nb::arg("iterations"),
-        nb::arg("project"), nb::arg("verbose") = 0,
+        nb::arg("smooth"), nb::arg("project"), nb::arg("verbose") = 0,
         "Isotropic remeshing, with per-vertex target edge length. "
         "Features ability to select vertices allowed for "
         "remeshing and interpolate per-vertex attributes through remesh "
@@ -89,7 +91,8 @@ NB_MODULE(bkremeshlerps, m) {
   m.def("remesh_botsch_with_interps", &remesh_botsch_with_interps__arrtarglen,
         nb::arg("Vattrs"), nb::arg("F"), nb::arg("Vselection"),
         nb::arg("targetlen"), nb::arg("selection_threshold"),
-        nb::arg("iterations"), nb::arg("project"), nb::arg("verbose") = 0,
+        nb::arg("iterations"), nb::arg("smooth"), nb::arg("project"),
+        nb::arg("verbose") = 0,
         "Isotropic remeshing, with per-vertex target edge length. "
         "Features ability to select vertices allowed for "
         "remeshing and interpolate per-vertex attributes through remesh "
@@ -99,7 +102,7 @@ NB_MODULE(bkremeshlerps, m) {
         &remesh_botsch_adaptive_with_interps, nb::arg("Vattrs"), nb::arg("F"),
         nb::arg("Vselection"), nb::arg("epsilon"), nb::arg("adaptive"),
         nb::arg("selection_threshold"), nb::arg("iterations"),
-        nb::arg("project"), nb::arg("verbose") = 0,
+        nb::arg("smooth"), nb::arg("project"), nb::arg("verbose") = 0,
         "Adaptive isotropic remeshing, with target edge length/sizing field "
         "computed via curvature.");
 

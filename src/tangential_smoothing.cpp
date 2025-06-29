@@ -142,6 +142,19 @@ void tangential_smoothing(
       p = (V_etc.row(i).transpose() -
            (NN_ * (V_etc.row(i).transpose() - q.transpose())))
               .transpose();
+      // check if anything in p is nan... if yes, redo the coords separately
+      bool hasnan = false;
+      for (int i = 0; i < n_attribs; i++) {
+        hasnan = hasnan || (p(i) != p(i));
+      }
+      if (hasnan) {
+        p.leftCols<3>() =
+            (V_etc.row(i).template leftCols<3>().transpose() -
+             (NN * (V_etc.row(i).template leftCols<3>().transpose() -
+                    q.template leftCols<3>().transpose())))
+                .transpose();
+      }
+
       V_etc.row(i) = p;
 
       // p = q;

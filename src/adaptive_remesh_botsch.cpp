@@ -95,8 +95,8 @@ void remesh_botsch(const Eigen::MatrixXd &Vattrs_in,
                    const Eigen::MatrixX3i &F_in,
                    const Eigen::VectorXi &Vselection_in,
                    const Eigen::VectorXd &Vtargetlen_in,
-                   double selection_threshold, int iters, bool project,
-                   int verbose, Eigen::MatrixXd &Vattrs_out,
+                   double selection_threshold, int iters, bool smooth,
+                   bool project, int verbose, Eigen::MatrixXd &Vattrs_out,
                    Eigen::MatrixX3i &F_out, Eigen::VectorXi &Vselection_out,
                    Eigen::VectorXi &Fi_containing_V_proj_out) {
   Eigen::MatrixXd V0;
@@ -154,11 +154,13 @@ void remesh_botsch(const Eigen::MatrixXd &Vattrs_in,
     equalize_valences(V_etc, F_out, selection_threshold, feature); // Flip
 
     lambda = Eigen::VectorXd::Constant(new_n_verts, 1.0);
-    if (verbose) {
+    if (verbose && smooth) {
       std::cout << "smoothing...\n";
     }
-    tangential_smoothing(V_etc, F_out, selection_threshold, feature, lambda,
-                         sizingField, true); // Smooth
+    if (smooth) {
+      tangential_smoothing(V_etc, F_out, selection_threshold, feature, lambda,
+                           sizingField, true); // Smooth
+    }
 
     if (project) {
       if (verbose) {
@@ -190,8 +192,8 @@ void remesh_botsch(const Eigen::MatrixXd &Vattrs_in,
 void remesh_botsch(const Eigen::MatrixXd &Vattrs_in,
                    const Eigen::MatrixX3i &F_in,
                    const Eigen::VectorXi &Vselection_in, double targetlen,
-                   double selection_threshold, int iters, bool project,
-                   int verbose, Eigen::MatrixXd &Vattrs_out,
+                   double selection_threshold, int iters, bool smooth,
+                   bool project, int verbose, Eigen::MatrixXd &Vattrs_out,
                    Eigen::MatrixX3i &F_out, Eigen::VectorXi &Vselection_out,
                    Eigen::VectorXi &Fi_containing_V_proj_out) {
   Eigen::MatrixXd V0;
@@ -247,12 +249,14 @@ void remesh_botsch(const Eigen::MatrixXd &Vattrs_in,
     equalize_valences(V_etc, F_out, selection_threshold, feature); // Flip
 
     lambda = Eigen::VectorXd::Constant(new_n_verts, 1.0);
-    if (verbose) {
+    if (verbose && smooth) {
       std::cout << "smoothing...\n";
     }
-    tangential_smoothing(V_etc, F_out, selection_threshold, feature, lambda,
-                         sizingField,
-                         true); // Smooth
+    if (smooth) {
+      tangential_smoothing(V_etc, F_out, selection_threshold, feature, lambda,
+                           sizingField,
+                           true); // Smooth
+    }
 
     if (project) {
       if (verbose) {
@@ -279,15 +283,13 @@ void remesh_botsch(const Eigen::MatrixXd &Vattrs_in,
 }
 
 // this really should be an overload...
-void remesh_botsch_adaptive(const Eigen::MatrixXd &Vattrs_in,
-                            const Eigen::MatrixX3i &F_in,
-                            const Eigen::VectorXi &Vselection_in,
-                            double epsilon, bool adaptive,
-                            double selection_threshold, int iters, bool project,
-                            int verbose, Eigen::MatrixXd &Vattrs_out,
-                            Eigen::MatrixX3i &F_out,
-                            Eigen::VectorXi &Vselection_out,
-                            Eigen::VectorXi &Fi_containing_V_proj_out) {
+void remesh_botsch_adaptive(
+    const Eigen::MatrixXd &Vattrs_in, const Eigen::MatrixX3i &F_in,
+    const Eigen::VectorXi &Vselection_in, double epsilon, bool adaptive,
+    double selection_threshold, int iters, bool smooth, bool project,
+    int verbose, Eigen::MatrixXd &Vattrs_out, Eigen::MatrixX3i &F_out,
+    Eigen::VectorXi &Vselection_out,
+    Eigen::VectorXi &Fi_containing_V_proj_out) {
   Eigen::MatrixXd V0;
   Eigen::MatrixX3i F0;
   Eigen::VectorXd high, low, lambda, sizingField;
@@ -344,12 +346,14 @@ void remesh_botsch_adaptive(const Eigen::MatrixXd &Vattrs_in,
     equalize_valences(V_etc, F_out, selection_threshold, feature); // Flip
 
     lambda = Eigen::VectorXd::Constant(new_n_verts, 1.0);
-    if (verbose) {
+    if (verbose && smooth) {
       std::cout << "smoothing...\n";
     }
-    tangential_smoothing(V_etc, F_out, selection_threshold, feature, lambda,
-                         sizingField,
-                         true); // Smooth
+    if (smooth) {
+      tangential_smoothing(V_etc, F_out, selection_threshold, feature, lambda,
+                           sizingField,
+                           true); // Smooth
+    }
 
     if (project) {
       if (verbose) {
