@@ -18,17 +18,19 @@
 #include <igl/flip_edge.h>
 
 template <typename DerivedV_etc, typename DerivedF, typename DerivedE,
-          typename DeriveduE, typename DerivedEMAP, typename uE2EType>
-void flip_edge_adjacency(Eigen::VectorXi &vertex_valences, double selthresh,
-                         int n_attribs_minus1,
-                         Eigen::PlainObjectBase<DerivedV_etc> &V_etc,
-                         std::vector<std::vector<int>> &A,
-                         Eigen::PlainObjectBase<DerivedF> &F,       // F
-                         Eigen::PlainObjectBase<DerivedE> &E,       // E
-                         Eigen::PlainObjectBase<DeriveduE> &uE,     // uE
-                         Eigen::PlainObjectBase<DerivedEMAP> &EMAP, // EMAP
-                         std::vector<std::vector<uE2EType>> &uE2E,  // uE2E
-                         uE2EType &uei) {
+          typename DeriveduE, typename DerivedEMAP, typename uE2EType,
+          typename Derivednew2oldFi>
+void flip_edge_adjacency(
+    Eigen::VectorXi &vertex_valences, double selthresh, int n_attribs_minus1,
+    Eigen::PlainObjectBase<DerivedV_etc> &V_etc,
+    std::vector<std::vector<int>> &A,
+    Eigen::PlainObjectBase<DerivedF> &F,                 // F
+    Eigen::PlainObjectBase<DerivedE> &E,                 // E
+    Eigen::PlainObjectBase<DeriveduE> &uE,               // uE
+    Eigen::PlainObjectBase<DerivedEMAP> &EMAP,           // EMAP
+    Eigen::PlainObjectBase<Derivednew2oldFi> &new2oldFi, // new2oldFi
+    std::vector<std::vector<uE2EType>> &uE2E,            // uE2E
+    uE2EType &uei) {
   // namanh: check if edge is selected, if so mark bad/just return early
   // edit: do we allow only one vertex ?
   if (!(V_etc(uE(uei, 0), Eigen::last) >= selthresh &&
@@ -51,6 +53,13 @@ void flip_edge_adjacency(Eigen::VectorXi &vertex_valences, double selthresh,
   int v2 = F(f1, (c1 + 2) % 3);
   int v4 = F(f1, c1);
   int v3 = F(f2, c2);
+  // track origin faces: invalidate all of these faces' original-mesh-face,
+  // because they've been modified  (This is a choice! how do we want this to
+  // work? I just want to track the original faces for result faces that are
+  // unchanged from the original, and everything else gets a negative number
+  // meaning "no original/mangled/fromscratch")
+  new2oldFi[f1] = -1;
+  new2oldFi[f2] = -1;
   assert(F(f2, (c2 + 2) % 3) == v1);
   assert(F(f2, (c2 + 1) % 3) == v2);
   // Assert new triangle's area is nonzero
@@ -157,10 +166,12 @@ void flip_edge_adjacency(Eigen::VectorXi &vertex_valences, double selthresh,
   // std::cout << "Lambda call end" << std::endl;
 };
 
-template <typename DerivedV_etc, typename DerivedF, typename DerivedFeature>
+template <typename DerivedV_etc, typename DerivedF, typename DerivedFeature,
+          typename Derivednew2oldFi>
 void equalize_valences(Eigen::PlainObjectBase<DerivedV_etc> &V_etc,
                        Eigen::PlainObjectBase<DerivedF> &F, double selthresh,
-                       Eigen::PlainObjectBase<DerivedFeature> &feature) {
+                       Eigen::PlainObjectBase<DerivedFeature> &feature,
+                       Eigen::PlainObjectBase<Derivednew2oldFi> &new2oldFi) {
   // Eigen::VectorXd p;
   std::vector<bool> is_feature_vertex;
   Eigen::MatrixXi E, uE, EI, EF;
@@ -248,7 +259,7 @@ void equalize_valences(Eigen::PlainObjectBase<DerivedV_etc> &V_etc,
 
       if (deviation_pre > deviation_post) {
         flip_edge_adjacency(vertex_valences, selthresh, n_attribs_minus1, V_etc,
-                            A, F, E, uE, EMAP, uE2E, i);
+                            A, F, E, uE, EMAP, new2oldFi, uE2E, i);
       }
     }
 

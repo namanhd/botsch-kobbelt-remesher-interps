@@ -12,6 +12,7 @@
 // #include <igl/edge_flaps.h>
 // #include <igl/circulation.h>
 // #include <igl/remove_duplicate_vertices.h>
+#include <Eigen/src/Core/DenseBase.h>
 #include <Eigen/src/Core/Matrix.h>
 #include <Eigen/src/Core/util/Constants.h>
 #include <igl/avg_edge_length.h>
@@ -98,10 +99,13 @@ void remesh_botsch(const Eigen::MatrixXd &Vattrs_in,
                    double selection_threshold, int iters, bool smooth,
                    bool project, int verbose, Eigen::MatrixXd &Vattrs_out,
                    Eigen::MatrixX3i &F_out, Eigen::VectorXi &Vselection_out,
-                   Eigen::VectorXi &Fi_containing_V_proj_out) {
+                   Eigen::VectorXi &Fi_containing_V_proj_out,
+                   Eigen::VectorXi &new2oldFi_out) {
   Eigen::MatrixXd V0;
   Eigen::MatrixX3i F0;
   Eigen::VectorXd high, low, lambda, sizingField;
+  Eigen::VectorXi new2oldFi(F_in.rows());
+  new2oldFi.setLinSpaced(0, F_in.rows() - 1);
   // high = Vtargetlen_in * 1.4;
   // low = Vtargetlen_in * 0.7;
 
@@ -135,13 +139,13 @@ void remesh_botsch(const Eigen::MatrixXd &Vattrs_in,
       std::cout << "splitting...\n";
     }
     split_edges_until_bound(V_etc, F_out, selection_threshold, feature, high,
-                            low); // Split
+                            low, new2oldFi); // Split
 
     if (verbose) {
       std::cout << "collapsing...\n";
     }
-    collapse_edges(V_etc, F_out, selection_threshold, feature, high,
-                   low); // Collapse
+    collapse_edges(V_etc, F_out, selection_threshold, feature, high, low,
+                   new2oldFi); // Collapse
 
     int new_n_verts = V_etc.rows();
 
@@ -151,7 +155,8 @@ void remesh_botsch(const Eigen::MatrixXd &Vattrs_in,
     if (verbose) {
       std::cout << "flipping...\n";
     }
-    equalize_valences(V_etc, F_out, selection_threshold, feature); // Flip
+    equalize_valences(V_etc, F_out, selection_threshold, feature,
+                      new2oldFi); // Flip
 
     lambda = Eigen::VectorXd::Constant(new_n_verts, 1.0);
     if (verbose && smooth) {
@@ -185,6 +190,7 @@ void remesh_botsch(const Eigen::MatrixXd &Vattrs_in,
   Vselection_out = (V_etc.rightCols<1>().array() >= selection_threshold)
                        .cast<int>()
                        .matrix();
+  new2oldFi_out = new2oldFi;
 }
 
 // overload with constant targetlen, does not need to append the targetlen field
@@ -195,10 +201,13 @@ void remesh_botsch(const Eigen::MatrixXd &Vattrs_in,
                    double selection_threshold, int iters, bool smooth,
                    bool project, int verbose, Eigen::MatrixXd &Vattrs_out,
                    Eigen::MatrixX3i &F_out, Eigen::VectorXi &Vselection_out,
-                   Eigen::VectorXi &Fi_containing_V_proj_out) {
+                   Eigen::VectorXi &Fi_containing_V_proj_out,
+                   Eigen::VectorXi &new2oldFi_out) {
   Eigen::MatrixXd V0;
   Eigen::MatrixX3i F0;
   Eigen::VectorXd high, low, lambda, sizingField;
+  Eigen::VectorXi new2oldFi(F_in.rows());
+  new2oldFi.setLinSpaced(0, F_in.rows() - 1);
 
   F0 = F_in;
   F_out = F0;
@@ -230,13 +239,13 @@ void remesh_botsch(const Eigen::MatrixXd &Vattrs_in,
       std::cout << "splitting...\n";
     }
     split_edges_until_bound(V_etc, F_out, selection_threshold, feature, high,
-                            low); // Split
+                            low, new2oldFi); // Split
 
     if (verbose) {
       std::cout << "collapsing...\n";
     }
-    collapse_edges(V_etc, F_out, selection_threshold, feature, high,
-                   low); // Collapse
+    collapse_edges(V_etc, F_out, selection_threshold, feature, high, low,
+                   new2oldFi); // Collapse
 
     int new_n_verts = V_etc.rows();
     // update this for the latest V_etc size which won't change anymore for the
@@ -246,7 +255,8 @@ void remesh_botsch(const Eigen::MatrixXd &Vattrs_in,
     if (verbose) {
       std::cout << "flipping...\n";
     }
-    equalize_valences(V_etc, F_out, selection_threshold, feature); // Flip
+    equalize_valences(V_etc, F_out, selection_threshold, feature,
+                      new2oldFi); // Flip
 
     lambda = Eigen::VectorXd::Constant(new_n_verts, 1.0);
     if (verbose && smooth) {
@@ -280,6 +290,7 @@ void remesh_botsch(const Eigen::MatrixXd &Vattrs_in,
   Vselection_out = (V_etc.rightCols<1>().array() >= selection_threshold)
                        .cast<int>()
                        .matrix();
+  new2oldFi_out = new2oldFi;
 }
 
 // this really should be an overload...
@@ -288,11 +299,13 @@ void remesh_botsch_adaptive(
     const Eigen::VectorXi &Vselection_in, double epsilon, bool adaptive,
     double selection_threshold, int iters, bool smooth, bool project,
     int verbose, Eigen::MatrixXd &Vattrs_out, Eigen::MatrixX3i &F_out,
-    Eigen::VectorXi &Vselection_out,
-    Eigen::VectorXi &Fi_containing_V_proj_out) {
+    Eigen::VectorXi &Vselection_out, Eigen::VectorXi &Fi_containing_V_proj_out,
+    Eigen::VectorXi &new2oldFi_out) {
   Eigen::MatrixXd V0;
   Eigen::MatrixX3i F0;
   Eigen::VectorXd high, low, lambda, sizingField;
+  Eigen::VectorXi new2oldFi(F_in.rows());
+  new2oldFi.setLinSpaced(0, F_in.rows() - 1);
 
   F0 = F_in;
   F_out = F0;
@@ -325,13 +338,13 @@ void remesh_botsch_adaptive(
       std::cout << "splitting...\n";
     }
     split_edges_until_bound(V_etc, F_out, selection_threshold, feature, high,
-                            low); // Split
+                            low, new2oldFi); // Split
 
     if (verbose) {
       std::cout << "collapsing...\n";
     }
-    collapse_edges(V_etc, F_out, selection_threshold, feature, high,
-                   low); // Collapse
+    collapse_edges(V_etc, F_out, selection_threshold, feature, high, low,
+                   new2oldFi); // Collapse
 
     // update this for the latest V_etc size which won't change anymore for the
     // rest of this loop iteration
@@ -343,7 +356,8 @@ void remesh_botsch_adaptive(
     if (verbose) {
       std::cout << "flipping...\n";
     }
-    equalize_valences(V_etc, F_out, selection_threshold, feature); // Flip
+    equalize_valences(V_etc, F_out, selection_threshold, feature,
+                      new2oldFi); // Flip
 
     lambda = Eigen::VectorXd::Constant(new_n_verts, 1.0);
     if (verbose && smooth) {
@@ -377,6 +391,7 @@ void remesh_botsch_adaptive(
   Vselection_out = (V_etc.rightCols<1>().array() >= selection_threshold)
                        .cast<int>()
                        .matrix();
+  new2oldFi_out = new2oldFi;
 }
 
 // helper for finding barycentric hits with Fi_containing_V_proj

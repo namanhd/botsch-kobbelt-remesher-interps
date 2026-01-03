@@ -6,7 +6,8 @@
 
 namespace nb = nanobind;
 
-std::tuple<Eigen::MatrixXd, Eigen::MatrixXi, Eigen::VectorXi, Eigen::VectorXi>
+std::tuple<Eigen::MatrixXd, Eigen::MatrixXi, Eigen::VectorXi, Eigen::VectorXi,
+           Eigen::VectorXi>
 remesh_botsch_with_interps__consttargetlen(
     const nb::DRef<const Eigen::MatrixXd> &Vattrs,
     const nb::DRef<const Eigen::MatrixXi> &F,
@@ -17,14 +18,16 @@ remesh_botsch_with_interps__consttargetlen(
   Eigen::MatrixX3i F_remesh;
   Eigen::VectorXi Vselection_remesh;
   Eigen::VectorXi Fi_containing_V_proj;
+  Eigen::VectorXi new2oldFi;
   remesh_botsch(Vattrs, F, Vselection, targetlen, selection_threshold,
                 iterations, smooth, project, verbose, Vattrs_remesh, F_remesh,
-                Vselection_remesh, Fi_containing_V_proj);
+                Vselection_remesh, Fi_containing_V_proj, new2oldFi);
   return std::make_tuple(Vattrs_remesh, F_remesh, Vselection_remesh,
-                         Fi_containing_V_proj);
+                         Fi_containing_V_proj, new2oldFi);
 }
 
-std::tuple<Eigen::MatrixXd, Eigen::MatrixXi, Eigen::VectorXi, Eigen::VectorXi>
+std::tuple<Eigen::MatrixXd, Eigen::MatrixXi, Eigen::VectorXi, Eigen::VectorXi,
+           Eigen::VectorXi>
 remesh_botsch_with_interps__arrtarglen(
     const nb::DRef<const Eigen::MatrixXd> &Vattrs,
     const nb::DRef<const Eigen::MatrixXi> &F,
@@ -36,14 +39,16 @@ remesh_botsch_with_interps__arrtarglen(
   Eigen::MatrixX3i F_remesh;
   Eigen::VectorXi Vselection_remesh;
   Eigen::VectorXi Fi_containing_V_proj;
+  Eigen::VectorXi new2oldFi;
   remesh_botsch(Vattrs, F, Vselection, targetlen, selection_threshold,
                 iterations, smooth, project, verbose, Vattrs_remesh, F_remesh,
-                Vselection_remesh, Fi_containing_V_proj);
+                Vselection_remesh, Fi_containing_V_proj, new2oldFi);
   return std::make_tuple(Vattrs_remesh, F_remesh, Vselection_remesh,
-                         Fi_containing_V_proj);
+                         Fi_containing_V_proj, new2oldFi);
 }
 
-std::tuple<Eigen::MatrixXd, Eigen::MatrixXi, Eigen::VectorXi, Eigen::VectorXi>
+std::tuple<Eigen::MatrixXd, Eigen::MatrixXi, Eigen::VectorXi, Eigen::VectorXi,
+           Eigen::VectorXi>
 remesh_botsch_adaptive_with_interps(
     const nb::DRef<const Eigen::MatrixXd> &Vattrs,
     const nb::DRef<const Eigen::MatrixXi> &F,
@@ -54,12 +59,13 @@ remesh_botsch_adaptive_with_interps(
   Eigen::MatrixX3i F_remesh;
   Eigen::VectorXi Vselection_remesh;
   Eigen::VectorXi Fi_containing_V_proj;
+  Eigen::VectorXi new2oldFi;
   remesh_botsch_adaptive(Vattrs, F, Vselection, epsilon, adaptive,
                          selection_threshold, iterations, smooth, project,
                          verbose, Vattrs_remesh, F_remesh, Vselection_remesh,
-                         Fi_containing_V_proj);
+                         Fi_containing_V_proj, new2oldFi);
   return std::make_tuple(Vattrs_remesh, F_remesh, Vselection_remesh,
-                         Fi_containing_V_proj);
+                         Fi_containing_V_proj, new2oldFi);
 }
 
 std::tuple<Eigen::MatrixX3d, Eigen::MatrixXd>

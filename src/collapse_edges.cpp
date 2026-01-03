@@ -26,12 +26,13 @@
 #include <igl/shortest_edge_and_midpoint.h>
 
 template <typename DerivedV_etc, typename DerivedF, typename DerivedFeature,
-          typename DerivedHigh, typename DerivedLow>
+          typename DerivedHigh, typename DerivedLow, typename Derivednew2oldFi>
 void collapse_edges(Eigen::MatrixBase<DerivedV_etc> &V_etc,
                     Eigen::MatrixBase<DerivedF> &F, double selthresh,
                     Eigen::MatrixBase<DerivedFeature> &feature,
                     Eigen::MatrixBase<DerivedHigh> &high,
-                    Eigen::MatrixBase<DerivedLow> &low) {
+                    Eigen::MatrixBase<DerivedLow> &low,
+                    Eigen::MatrixBase<Derivednew2oldFi> &new2oldFi) {
   Eigen::MatrixXi E, uE, EI, EF;
   Eigen::VectorXi EMAP, I, J;
   // Eigen::VectorXd data;
@@ -237,6 +238,14 @@ void collapse_edges(Eigen::MatrixBase<DerivedV_etc> &V_etc,
                 pre_collapse_lambda, post_collapse_lambda, U, G, J, I);
   // std::cout << "!!" << std::endl;
 
+  // TODO take J (which is an array of shape (len(G),) (G is the 'new compacted
+  // faces array') and contains indices into original F) and find a way to
+  // keep updating it through splitting and flipping as well so that at the
+  // end we have a way to trace where each UNSELECTED face came from.
+  // each face mangled by an update (collapse, split) would have this origface
+  // id wiped out because we don't care about this for the purpose of preserving
+  // UVs.
+
   // Eigen::VectorXd high_new, low_new;
   Eigen::VectorXi feature_new;
   feature_new.resize(num_feature);
@@ -251,6 +260,21 @@ void collapse_edges(Eigen::MatrixBase<DerivedV_etc> &V_etc,
       j = j + 1;
     }
   }
+  // at this point, new2oldFi[i]=j where i is a pre-collapse face idx (idx of
+  // the F array given to this function) and j is an index into the original
+  // mesh F0 before ALL remesh operations. we "bump" the i up by one using J
+  // which maps the latest post-collapse face idx to the pre-collapse face idx.
+  // we do this by modifying J, and then copying it to new2oldFi, because
+  // new2oldFi should have length == len(latest modified F array) and have this
+  // be kept up to date
+  // (in other words, the J we have right now is 'newNew2new', and using our
+  // 'new2old' we're bridging the gap from newNew -> new -> old to make J become
+  // newNew2old)
+  for (int newNewFi = 0; newNewFi < J.rows(); newNewFi++) {
+    J[newNewFi] = new2oldFi[J[newNewFi]];
+  }
+  // finally this is copied into and becomes the newly updated new2oldFi mapping
+  new2oldFi = J;
 
   // PLACEHOLDER
 

@@ -24,13 +24,14 @@
 #include "split_edges.h"
 
 template <typename DerivedV_etc, typename DerivedF, typename DerivedFeature,
-          typename DerivedHigh, typename DerivedLow>
-void split_edges_until_bound(Eigen::PlainObjectBase<DerivedV_etc> &V_etc,
-                             Eigen::PlainObjectBase<DerivedF> &F,
-                             double selthresh,
-                             Eigen::PlainObjectBase<DerivedFeature> &feature,
-                             Eigen::PlainObjectBase<DerivedHigh> &high,
-                             Eigen::PlainObjectBase<DerivedLow> &low) {
+          typename DerivedHigh, typename DerivedLow, typename Derivednew2oldFi>
+void split_edges_until_bound(
+    Eigen::PlainObjectBase<DerivedV_etc> &V_etc,
+    Eigen::PlainObjectBase<DerivedF> &F, double selthresh,
+    Eigen::PlainObjectBase<DerivedFeature> &feature,
+    Eigen::PlainObjectBase<DerivedHigh> &high,
+    Eigen::PlainObjectBase<DerivedLow> &low,
+    Eigen::PlainObjectBase<Derivednew2oldFi> &new2oldFi) {
   int m = F.rows();
   int n = V_etc.rows();
   int num_feat = feature.size();
@@ -92,7 +93,8 @@ void split_edges_until_bound(Eigen::PlainObjectBase<DerivedV_etc> &V_etc,
 
       // std::cout << "Before call to split_edges" << std::endl;
       // std::cout << edges_to_split.size() << std::endl;
-      split_edges(V_etc, F, E, uE, EMAP, uE2E, high, low, edges_to_split);
+      split_edges(V_etc, F, E, uE, EMAP, uE2E, high, low, edges_to_split,
+                  new2oldFi);
       // igl::writeOBJ("test.obj",V,F);
       // igl::unique_edge_map(F,E,uE,EMAP,uE2E);
       // std::cout << igl::is_edge_manifold(F) << std::endl;

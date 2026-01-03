@@ -13,7 +13,7 @@
 
 template <typename DerivedV_etc, typename DerivedF, typename DerivedE0,
           typename DeriveduE, typename DerivedEMAP0, typename uE2EType,
-          typename DerivedHigh, typename DerivedLow>
+          typename DerivedHigh, typename DerivedLow, typename Derivednew2oldFi>
 void split_edges(Eigen::PlainObjectBase<DerivedV_etc> &V_etc,
                  Eigen::PlainObjectBase<DerivedF> &F,
                  Eigen::PlainObjectBase<DerivedE0> &E0,
@@ -22,7 +22,8 @@ void split_edges(Eigen::PlainObjectBase<DerivedV_etc> &V_etc,
                  std::vector<std::vector<uE2EType>> &uE2E,
                  Eigen::PlainObjectBase<DerivedHigh> &high,
                  Eigen::PlainObjectBase<DerivedLow> &low,
-                 const std::vector<uE2EType> &edges_to_split);
+                 const std::vector<uE2EType> &edges_to_split,
+                 Eigen::PlainObjectBase<Derivednew2oldFi> &new2oldFi);
 
 #include "split_edges.cpp"
 #endif

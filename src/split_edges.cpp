@@ -1,4 +1,5 @@
 #include <Eigen/Core>
+#include <iostream>
 #include <vector>
 // #include <igl/per_vertex_normals.h>
 // #include <igl/principal_curvature.h>
@@ -23,7 +24,7 @@
 
 template <typename DerivedV_etc, typename DerivedF, typename DerivedE0,
           typename DeriveduE, typename DerivedEMAP0, typename uE2EType,
-          typename DerivedHigh, typename DerivedLow>
+          typename DerivedHigh, typename DerivedLow, typename Derivednew2oldFi>
 void split_edges(Eigen::PlainObjectBase<DerivedV_etc> &V_etc,
                  Eigen::PlainObjectBase<DerivedF> &F,
                  Eigen::PlainObjectBase<DerivedE0> &E0,
@@ -32,7 +33,8 @@ void split_edges(Eigen::PlainObjectBase<DerivedV_etc> &V_etc,
                  std::vector<std::vector<uE2EType>> &uE2E,
                  Eigen::PlainObjectBase<DerivedHigh> &high,
                  Eigen::PlainObjectBase<DerivedLow> &low,
-                 const std::vector<uE2EType> &edges_to_split) {
+                 const std::vector<uE2EType> &edges_to_split,
+                 Eigen::PlainObjectBase<Derivednew2oldFi> &new2oldFi) {
   using namespace Eigen;
 
   Eigen::VectorXi EMAP;
@@ -78,6 +80,7 @@ void split_edges(Eigen::PlainObjectBase<DerivedV_etc> &V_etc,
   // Used for indexing and labeling.
 
   F.conservativeResize(num_faces, 3);
+  new2oldFi.conservativeResize(num_faces);
   V_etc.conservativeResize(num_vertices, V_etc.cols());
   high.conservativeResize(num_vertices);
   low.conservativeResize(num_vertices);
@@ -112,8 +115,8 @@ void split_edges(Eigen::PlainObjectBase<DerivedV_etc> &V_etc,
     assert(uE2E[uei].size() == 2);
     //          v1
     //          /|\
-        //         / | \
-        //     v3 /f1|f0\ v4
+    //         / | \
+    //     v3 /f1|f0\ v4
     //        \  |  /
     //         \ | /
     //          \|/
@@ -192,14 +195,25 @@ void split_edges(Eigen::PlainObjectBase<DerivedV_etc> &V_etc,
     F(f1, c1) = v3; // redundant
     F(f1, (c1 + 1) % 3) = n + i;
     F(f1, (c1 + 2) % 3) = v1;
+    // new faces!
     // fm
-    F(m + (2 * i), 0) = v2;
-    F(m + (2 * i), 1) = n + i;
-    F(m + (2 * i), 2) = v3;
+    int mm = m + (2 * i);
+    F(mm, 0) = v2;
+    F(mm, 1) = n + i;
+    F(mm, 2) = v3;
     // fm+1
-    F(m + (2 * i) + 1, 0) = v2;
-    F(m + (2 * i) + 1, 1) = v4;
-    F(m + (2 * i) + 1, 2) = n + i;
+    F(mm + 1, 0) = v2;
+    F(mm + 1, 1) = v4;
+    F(mm + 1, 2) = n + i;
+    // track origin faces: invalidate all of these faces' original-mesh-face,
+    // because they've been modified  (This is a choice! how do we want this to
+    // work? I just want to track the original faces for result faces that are
+    // unchanged from the original, and everything else gets a negative number
+    // meaning "no original/mangled/fromscratch")
+    new2oldFi[f0] = -1;
+    new2oldFi[f1] = -1;
+    new2oldFi[mm] = -1;
+    new2oldFi[mm + 1] = -1;
 
     // *** UPDATE UE ***
 
