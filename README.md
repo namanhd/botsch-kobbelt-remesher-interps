@@ -12,7 +12,10 @@ That repo is itself a fork of
 
 ```sh
 # First activate the python environment to build for; must be python>=3.8 and have numpy installed
-conda activate myenv
+conda activate myenv  # or other environment manager
+
+# must have nanobind installed
+python -m pip install nanobind
 
 # then build the extension
 cmake -S . -B build
