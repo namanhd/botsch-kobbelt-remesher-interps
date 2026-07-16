@@ -8,31 +8,22 @@ This is a fork of
 That repo is itself a fork of
 [this repo](https://github.com/sgsellan/botsch-kobbelt-remesher-libigl), adding adaptive remeshing.
 
-## Building
+## Installation
 
-```sh
-# First activate the python environment to build for; must be python>=3.8 and have numpy installed
-conda activate myenv  # or other environment manager
-
-# must have nanobind installed
-python -m pip install nanobind
-
-# then build the extension
-cmake -S . -B build
-cmake --build build
+Run `pip install` on the root of this repo.
+```
+pip install .
 ```
 
-A successful build will yield a shared library file in the `build` directory. On Linux, this will have a filename that looks like `bkremeshlerps.cpython*.so` (with a python version string corresponding to the python version in your environment).
-
-In python code, you can import this shared library file as a module:
-```
-sys.path.insert(0, "build")
+Then import as
+```python
 import bkremeshlerps
 ```
 
 ## Usage
 
-More polished documentation is todo, but the auto-generated docs from nanobind you get by running `help(bkremeshlerps)` at a python REPL should contain all the information you need (type signatures and docstrings defined in the C++ source).
+More polished documentation is todo, but this package does have docstrings and type stubs, which you can see by running `help(bkremeshlerps)` at a python REPL
+or via the type hints and documentation shown in your editor.
 
 At a glance:
 

@@ -82,7 +82,7 @@ barycentric_interp_on_Fi_containing_V_proj__binding(
   return std::make_tuple(barycentric_coordinates, Vattrs_barylerped);
 }
 
-NB_MODULE(bkremeshlerps, m) {
+NB_MODULE(bkremeshlerps_nb, m) {
   m.def("remesh_botsch_with_interps",
         &remesh_botsch_with_interps__consttargetlen, nb::arg("Vattrs"),
         nb::arg("F"), nb::arg("Vselection"), nb::arg("targetlen"),
